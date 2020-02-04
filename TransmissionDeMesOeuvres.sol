@@ -74,6 +74,16 @@ que par l'auteur du document. Si ce n'est pas l'auteur qui appelle la fonction, 
        require(msg.sender == auteurs[msg.sender].auteur, "seul l'auteur du document peut appeler cette fonction.");
        _;
    }
+   
+   /* 
+Modificateur qui sera utilisé pour modifier facilement le comportement de fonctions du smart contract, en modifiant sa sémantique.
+Si "onlyMandataire" est rajouté à la sémantique d'une fonction, celle-ci ne pourra être appelée
+que par un mandataire désigné par l'auteur. 
+*/
+   modifier onlyMandataire(address _auteur){
+        require(LesMandataires(msg.sender, _auteur), "seul un mandataire désigné par l'auteur peut appeler cette fonction.");
+       _  ;
+   }
 /**
 @notice Vérifie si l'auteur a désigné un ou des mandataires.
 @dev La fonction va rechercher dans le mapping auteurs s'il y a des mandataires désignés. 
@@ -94,15 +104,7 @@ que par l'auteur du document. Si ce n'est pas l'auteur qui appelle la fonction, 
        }
        return false;
    }
-/* 
-Modificateur qui sera utilisé pour modifier facilement le comportement de fonctions du smart contract, en modifiant sa sémantique.
-Si "onlyMandataire" est rajouté à la sémantique d'une fonction, celle-ci ne pourra être appelée
-que par un mandataire désigné par l'auteur. 
-*/
-   modifier onlyMandataire(address _auteur){
-        require(LesMandataires(msg.sender, _auteur), "seul un mandataire désigné par l'auteur peut appeler cette fonction.");
-       _  ;
-   }
+
 /**
 @notice Ajoute un document qui sera horodaté dans la blockchain Ethereum. 
 @dev La fonction va initialiser les structures et les ajouter dans les mappings. 
@@ -116,16 +118,17 @@ que par un mandataire désigné par l'auteur.
 @param _biographie Biographie de l'auteur.
 @param _dateNaissance Date de naissance de l'auteur.
 @param _heritier Adresse Ethereum des héritiers (indivisaires ou légataire).
-@param _mandataires tableau dynamique des adresses Ethereum des mandataires.
 */
    function AjouterUneOeuvre (string memory _titre, string memory _typeContenu, uint _date, bytes32 _hash,
-   string memory _nom, string memory _prenom, string memory _biographie, uint _dateNaissance, address _heritier, address[] memory _mandataires) public{
+   string memory _nom, string memory _prenom, string memory _biographie, uint _dateNaissance, address _heritier) public{
        // Assigne une référence "nouveauDoc".
        Document memory nouveauDoc = Document(_titre, _typeContenu, _date, msg.sender, _hash);
        // Le hash du document est stocké pour chaque nouveau document.
        documents[_hash] = nouveauDoc;
        // Pour chacun des documents, un nouveau type d'élément Document est rajouté au tableau listeDocuments.
        listeDocuments.push(nouveauDoc);
+       // Déclaration d'un tableau vide pour les mandataires
+       address[] memory _mandataires;
         // Assigne une référence "nouveauAuteur" ; la date de décès de l'auteur est renseignée à 0.
        Auteur memory nouveauAuteur = Auteur(_nom, _prenom, _biographie, _dateNaissance, 0, msg.sender, _heritier, _mandataires);
        // A chaque hash de document correspond l'adresse du msg.sender.
@@ -138,11 +141,11 @@ que par un mandataire désigné par l'auteur.
 @notice Seul l'auteur est habilité à désigner un mandataire.
 @dev La fonction va ajouter une variable au struct Auteur. 
 @dev Cette variable étant un tableau, elle peut comprendre plusieurs valeurs, les adresses Ethereum des mandataires.
-@param _mandataires tableau des adresses Ethereum des mandataires.
+@param _mandataire une adresse Ethereum d'un mandataire.
 */
-   function AjouterUnMandataire (address[] memory _mandataires) onlyAuteur public{
+   function AjouterUnMandataire (address _mandataire) onlyAuteur public{
         Auteur storage auteur = auteurs[msg.sender];
-        auteur.mandataires = _mandataires;
+        auteur.mandataires.push(_mandataire);
    }
 /** 
 @notice Ajoute l'adresse Ethereum des héritiers d'un auteur.
@@ -157,7 +160,7 @@ que par un mandataire désigné par l'auteur.
 */
    function AjouterLesHeritiers (address _heritier, address _auteur) public{
        require(msg.sender == auteurs[msg.sender].auteur || LesMandataires (msg.sender,_auteur));
-       Auteur storage auteur = auteurs[msg.sender];
+       Auteur storage auteur = auteurs[_auteur];
        auteur.heritier = _heritier;
    }
 /**
@@ -170,10 +173,10 @@ que par un mandataire désigné par l'auteur.
 @param _hash Hash du document.
 */
    function DeclarerLeDeces (address _auteur, uint _dateDeces, bytes32 _hash) onlyMandataire(_auteur) public{
-       Auteur storage auteur = auteurs[msg.sender];
+       Auteur storage auteur = auteurs[_auteur];
        auteur.dateDeces = _dateDeces;
        if(auteurs[_auteur].heritier != address(0)){
-           TransfererLaPropriete (_hash, _auteur);
+           TransfererLaPropriete(_hash, _auteur);
        }
    }
 /**
@@ -184,7 +187,8 @@ que par un mandataire désigné par l'auteur.
 @param _hash Hash du document.
 @param _auteur Adresse Ethereum de l'auteur.
 */
-   function TransfererLaPropriete (bytes32 _hash, address _auteur) onlyMandataire(_auteur) public{
+   function TransfererLaPropriete (bytes32 _hash, address _auteur) public{
+       require(msg.sender == address(this) || LesMandataires(msg.sender, _auteur));
        require(auteurs[_auteur].heritier != address(0));
        require(auteurs[_auteur].dateDeces > 0);
        docOwner[_hash] = auteurs[_auteur].heritier;

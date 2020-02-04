@@ -15,7 +15,7 @@ La fonction va ajouter l'adresse Ethereum des héritiers (indivisaires ou légat
 ## AjouterUnMandataire - read
 |name |type |description
 |-----|-----|-----------
-|_mandataires|address[]|tableau des adresses Ethereum des mandataires.
+|_mandataire|address|une adresse Ethereum d'un mandataire.
 La fonction va ajouter une variable au struct Auteur. Cette variable étant un tableau, elle peut comprendre plusieurs valeurs, les adresses Ethereum des mandataires.
 
 ## AjouterUneOeuvre - read
@@ -30,7 +30,6 @@ La fonction va ajouter une variable au struct Auteur. Cette variable étant un t
 |_biographie|string|Biographie de l'auteur.
 |_dateNaissance|uint256|Date de naissance de l'auteur.
 |_heritier|address|Adresse Ethereum des héritiers (indivisaires ou légataire).
-|_mandataires|address[]|tableau dynamique des adresses Ethereum des mandataires.
 La fonction va initialiser les structures et les ajouter dans les mappings. Cette fonction utilise le mot clé "public", ce qui la rend accessible depuis l'extérieur du smart contract.
 
 ## DeclarerLeDeces - read
